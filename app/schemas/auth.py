@@ -6,6 +6,7 @@ Privacy notes:
 """
 from __future__ import annotations
 
+import re
 import uuid
 from typing import Optional
 
@@ -25,9 +26,17 @@ class RegisterRequest(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def _password_not_all_whitespace(cls, v: str) -> str:
+    def _password_complexity(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Password cannot be blank.")
+        if re.search(r"\s", v):
+            raise ValueError("Password must not contain spaces.")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one number.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", v):
+            raise ValueError("Password must contain at least one special character.")
         return v
 
 

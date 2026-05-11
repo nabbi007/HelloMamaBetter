@@ -21,6 +21,8 @@ ENV/
 !.env.example
 !.env.sample
 !.env.template
+# .env.test is gitignored because it contains test DB credentials
+.env.test
 .envrc
 .direnv/
 
