@@ -1,0 +1,78 @@
+##############################
+# Python / FastAPI
+##############################
+__pycache__/
+*.py[cod]
+*$py.class
+
+##############################
+# Virtual environments
+##############################
+.venv/
+venv/
+env/
+ENV/
+
+##############################
+# Environment variables
+##############################
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
+.direnv/
+
+##############################
+# Test / coverage / tooling
+##############################
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+##############################
+# Build artifacts
+##############################
+build/
+dist/
+*.egg-info/
+.eggs/
+
+##############################
+# Logs
+##############################
+*.log
+logs/
+
+##############################
+# IDEs / editors / OS files
+##############################
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+##############################
+# Local databases
+##############################
+*.sqlite3
+*.db
+
+##############################
+# Keys / secrets (local)
+##############################
+*.pem
+*.key
