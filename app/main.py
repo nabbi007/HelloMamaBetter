@@ -10,6 +10,7 @@ from app.core.events import lifespan
 from app.core.exceptions import install_exception_handlers
 from app.core.middleware import AccessLogMiddleware, RequestIDMiddleware
 from app.routers import auth as auth_router
+from app.routers import users as users_router
 
 
 def _configure_logging() -> None:
@@ -49,6 +50,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "service": settings.APP_NAME}
 
     app.include_router(auth_router.router, prefix=settings.API_V1_PREFIX)
+    app.include_router(users_router.router, prefix=settings.API_V1_PREFIX)
 
     return app
 

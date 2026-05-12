@@ -5,7 +5,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,12 +21,7 @@ from app.core.security import ACCESS_TYPE, JWTError, decode_token
 from app.database import get_db
 from app.models.user import User
 
-# tokenUrl is used by Swagger UI's "Authorize" dialog only — the actual login
-# endpoint accepts JSON via app/routers/auth.py.
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_PREFIX}/auth/login",
-    auto_error=False,
-)
+_bearer = HTTPBearer(auto_error=False)
 
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -34,8 +29,9 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 async def get_current_user(
     db: DbSession,
-    token: Annotated[str | None, Depends(oauth2_scheme)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> User:
+    token = credentials.credentials if credentials else None
     if not token:
         raise InvalidToken("Missing bearer token.")
     try:
