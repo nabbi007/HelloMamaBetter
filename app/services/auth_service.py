@@ -29,6 +29,7 @@ from app.core.exceptions import (
     InvalidOTP,
     InvalidToken,
     ResourceNotFound,
+    UsernameTaken,
 )
 from app.core.security import (
     REFRESH_TYPE,
@@ -48,6 +49,7 @@ from app.schemas.auth import (
 )
 from app.services.notification_service import send_otp_email
 from app.utils.encryption import encrypt_field
+from app.utils.username import generate_username
 from app.utils.validators import normalize_email, normalize_phone
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,29 @@ logger = logging.getLogger(__name__)
 async def _get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     result = await db.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
+
+
+async def _username_exists(db: AsyncSession, username: str) -> bool:
+    result = await db.execute(select(User.id).where(User.username == username))
+    return result.scalar_one_or_none() is not None
+
+
+async def is_username_taken(db: AsyncSession, username: str) -> bool:
+    """Public wrapper around _username_exists for use by the router."""
+    return await _username_exists(db, username)
+
+
+async def _generate_unique_username(db: AsyncSession, max_tries: int = 8) -> str:
+    """Pick a random username and re-roll until it's free.
+
+    Pool is ~1M combinations so collisions are rare; the loop is defence-in-depth.
+    """
+    for _ in range(max_tries):
+        candidate = generate_username()
+        if not await _username_exists(db, candidate):
+            return candidate
+    # Extremely unlikely; fall back to a uuid-derived name so we never block signup.
+    return f"User{uuid.uuid4().hex[:10]}"
 
 
 async def _issue_otp(
@@ -106,9 +131,18 @@ async def register_user(db: AsyncSession, data: RegisterRequest) -> User:
         raise EmailAlreadyRegistered()
 
     phone = normalize_phone(data.phone) if data.phone else None
+
+    if data.username:
+        if await _username_exists(db, data.username):
+            raise UsernameTaken()
+        username = data.username
+    else:
+        username = await _generate_unique_username(db)
+
     user = User(
         email=email,
         phone=phone,
+        username=username,
         hashed_password=hash_password(data.password),
         role=UserRole.STUDENT,
         is_active=True,

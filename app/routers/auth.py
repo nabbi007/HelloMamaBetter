@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
 from app.dependencies import CurrentUser, DbSession
 from app.schemas.auth import (
     AccessTokenResponse,
     CurrentUserResponse,
+    GoogleAuthRequest,
     LoginRequest,
     OTPResendRequest,
     OTPVerifyRequest,
@@ -23,11 +24,22 @@ from app.schemas.auth import (
 )
 from app.schemas.common import MessageResponse
 from app.services import auth_service
+from app.services import google_auth_service
 from app.utils.encryption import decrypt_field
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/username-available")
+async def username_available(
+    db: DbSession,
+    username: str = Query(min_length=3, max_length=30, pattern=r"^[A-Za-z0-9_]+$"),
+) -> dict[str, bool]:
+    """Public lookup: is this username free to claim right now?"""
+    taken = await auth_service.is_username_taken(db, username)
+    return {"available": not taken}
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -66,6 +78,13 @@ async def login(payload: LoginRequest, db: DbSession) -> TokenPair:
     return await auth_service.login(db, payload)
 
 
+@router.post("/google")
+async def google_login(payload: GoogleAuthRequest, db: DbSession) -> TokenPair:
+    tokens = await google_auth_service.google_login(db, credential=payload.credential)
+    await db.commit()
+    return tokens
+
+
 @router.post("/refresh")
 async def refresh(payload: RefreshRequest, db: DbSession) -> AccessTokenResponse:
     return await auth_service.refresh_access_token(db, payload.refresh_token)
@@ -81,4 +100,5 @@ async def me(user: CurrentUser) -> CurrentUserResponse:
         is_active=user.is_active,
         full_name=decrypt_field(user.full_name_encrypted),
         university=user.university,
+        username=user.username,
     )

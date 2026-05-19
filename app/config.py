@@ -56,6 +56,19 @@ class Settings(BaseSettings):
     PAYSTACK_BASE_URL: str = "https://api.paystack.co"
     PAYSTACK_WEBHOOK_SECRET: str = ""
 
+    # SMTP — pick one per env:
+    #   local dev (Mailpit):  HOST=mailpit, PORT=1025, no auth, STARTTLS=false
+    #   prod (Gmail/Resend):  HOST=smtp.<provider>, PORT=587, USER+PASSWORD set, STARTTLS=true
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 1025
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_STARTTLS: bool = True
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+
     # Logging
     LOG_LEVEL: str = "INFO"
 

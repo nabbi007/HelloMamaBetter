@@ -25,6 +25,7 @@ class User(BaseModel):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True, index=True)
+    username: Mapped[Optional[str]] = mapped_column(String(50), unique=True, index=True, nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x]),

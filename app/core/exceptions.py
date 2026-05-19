@@ -80,6 +80,11 @@ class EmailAlreadyRegistered(Conflict):
     message = "An account with this contact already exists."
 
 
+class UsernameTaken(Conflict):
+    code = "username_taken"
+    message = "That username is already taken."
+
+
 class InvalidOTP(AppException):
     status_code = status.HTTP_400_BAD_REQUEST
     code = "invalid_otp"

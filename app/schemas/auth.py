@@ -23,6 +23,12 @@ class RegisterRequest(BaseModel):
     full_name: str = Field(min_length=1, max_length=200)
     phone: Optional[str] = Field(default=None, max_length=32)
     university: Optional[str] = Field(default=None, max_length=255)
+    username: Optional[str] = Field(
+        default=None,
+        min_length=3,
+        max_length=30,
+        pattern=r"^[A-Za-z0-9_]+$",
+    )
 
     @field_validator("password")
     @classmethod
@@ -60,6 +66,10 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
 # --- Responses --------------------------------------------------------------
 
 class RegisterResponse(BaseModel):
@@ -93,3 +103,4 @@ class CurrentUserResponse(BaseModel):
     is_active: bool
     full_name: Optional[str] = None
     university: Optional[str] = None
+    username: Optional[str] = None
