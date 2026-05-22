@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Dancing_Script } from "next/font/google";
+import { AuthProvider } from "@/lib/AuthContext";
 
 const dancingScript = Dancing_Script({
   subsets: ["latin"],
@@ -15,7 +16,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={dancingScript.variable}>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

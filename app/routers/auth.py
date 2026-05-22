@@ -17,10 +17,12 @@ from app.schemas.auth import (
     LoginRequest,
     OTPResendRequest,
     OTPVerifyRequest,
+    PasswordResetRequest,
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
     TokenPair,
+    UserUpdateRequest,
 )
 from app.schemas.common import MessageResponse
 from app.services import auth_service
@@ -90,6 +92,15 @@ async def refresh(payload: RefreshRequest, db: DbSession) -> AccessTokenResponse
     return await auth_service.refresh_access_token(db, payload.refresh_token)
 
 
+@router.post("/reset-password")
+async def reset_password(
+    payload: PasswordResetRequest, db: DbSession
+) -> MessageResponse:
+    await auth_service.reset_password(db, payload)
+    await db.commit()
+    return MessageResponse(message="Password reset successful. Please log in.")
+
+
 @router.get("/me")
 async def me(user: CurrentUser) -> CurrentUserResponse:
     return CurrentUserResponse(
@@ -101,4 +112,22 @@ async def me(user: CurrentUser) -> CurrentUserResponse:
         full_name=decrypt_field(user.full_name_encrypted),
         university=user.university,
         username=user.username,
+    )
+
+
+@router.patch("/me")
+async def update_me(
+    payload: UserUpdateRequest, db: DbSession, user: CurrentUser
+) -> CurrentUserResponse:
+    updated = await auth_service.update_user(db, user, payload)
+    await db.commit()
+    return CurrentUserResponse(
+        id=updated.id,
+        email=updated.email,
+        role=updated.role.value if hasattr(updated.role, "value") else updated.role,
+        is_verified=updated.is_verified,
+        is_active=updated.is_active,
+        full_name=decrypt_field(updated.full_name_encrypted),
+        university=updated.university,
+        username=updated.username,
     )

@@ -44,8 +44,10 @@ from app.models.user import OTPCode, User, UserProfile
 from app.schemas.auth import (
     AccessTokenResponse,
     LoginRequest,
+    PasswordResetRequest,
     RegisterRequest,
     TokenPair,
+    UserUpdateRequest,
 )
 from app.services.notification_service import send_otp_email
 from app.utils.encryption import encrypt_field
@@ -252,6 +254,50 @@ async def refresh_access_token(db: AsyncSession, refresh_token: str) -> AccessTo
         raise AccountInactive()
 
     return AccessTokenResponse(access_token=create_access_token(user.id, user.role))
+
+
+async def reset_password(db: AsyncSession, data: PasswordResetRequest) -> None:
+    """Verify the reset OTP and replace the user's password hash.
+
+    Same generic InvalidOTP errors regardless of which check failed, to avoid
+    leaking which emails are registered.
+    """
+    email = normalize_email(data.email)
+    user = await _get_user_by_email(db, email)
+    if user is None:
+        raise InvalidOTP()
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(OTPCode).where(
+            OTPCode.user_id == user.id,
+            OTPCode.purpose == OTPPurpose.PASSWORD_RESET,
+            OTPCode.is_used.is_(False),
+            OTPCode.code == data.code,
+            OTPCode.expires_at > now,
+        )
+    )
+    otp = result.scalar_one_or_none()
+    if otp is None:
+        raise InvalidOTP()
+
+    otp.is_used = True
+    user.hashed_password = hash_password(data.new_password)
+
+
+async def update_user(
+    db: AsyncSession, user: User, data: UserUpdateRequest
+) -> User:
+    """Apply user-editable changes to the current user.
+
+    No-ops if nothing changed. Username uniqueness is enforced; collisions
+    raise UsernameTaken.
+    """
+    if data.username is not None and data.username != user.username:
+        if await _username_exists(db, data.username):
+            raise UsernameTaken()
+        user.username = data.username
+    return user
 
 
 async def get_user_or_404(db: AsyncSession, user_id: uuid.UUID) -> User:

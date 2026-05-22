@@ -1,13 +1,20 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+import { getAccessToken } from "./auth";
 
-export async function apiPost(path, body) {
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+
+async function apiFetch(method, path, body) {
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  const token = getAccessToken();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new Error(
@@ -26,20 +33,23 @@ export async function apiPost(path, body) {
 
   if (!res.ok) {
     let detail = `Request failed (${res.status})`;
-    if (data) {
-      if (typeof data.detail === "string") {
-        detail = data.detail;
-      } else if (Array.isArray(data.detail)) {
-        detail = data.detail
-          .map((d) => d.msg || JSON.stringify(d))
-          .join("; ");
-      }
+    if (data?.error?.message) {
+      detail = data.error.message;
+    } else if (typeof data?.detail === "string") {
+      detail = data.detail;
+    } else if (Array.isArray(data?.detail)) {
+      detail = data.detail.map((d) => d.msg || JSON.stringify(d)).join("; ");
     }
     const err = new Error(detail);
     err.status = res.status;
+    err.code = data?.error?.code ?? null;
+    err.fieldErrors = data?.error?.details ?? null;
     err.data = data;
     throw err;
   }
 
   return data;
 }
+
+export const apiPost = (path, body) => apiFetch("POST", path, body);
+export const apiGet = (path) => apiFetch("GET", path);

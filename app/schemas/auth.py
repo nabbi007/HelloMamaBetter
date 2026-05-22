@@ -70,6 +70,42 @@ class GoogleAuthRequest(BaseModel):
     credential: str
 
 
+class UserUpdateRequest(BaseModel):
+    """Fields a logged-in user can change on themselves.
+
+    Deliberately narrow: `username` only. Full name + email are not user-editable
+    via this endpoint (full_name is encrypted PII; email change needs its own
+    verify-email-change flow which is not built yet).
+    """
+    username: Optional[str] = Field(
+        default=None,
+        min_length=3,
+        max_length=30,
+        pattern=r"^[A-Za-z0-9_]+$",
+    )
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def _password_complexity(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Password cannot be blank.")
+        if re.search(r"\s", v):
+            raise ValueError("Password must not contain spaces.")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[0-9]", v):
+            raise ValueError("Password must contain at least one number.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-]", v):
+            raise ValueError("Password must contain at least one special character.")
+        return v
+
+
 # --- Responses --------------------------------------------------------------
 
 class RegisterResponse(BaseModel):

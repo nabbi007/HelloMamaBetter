@@ -4,66 +4,64 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { apiPost } from "@/lib/api";
-import { saveTokens } from "@/lib/auth";
-import { useAuth } from "@/lib/AuthContext";
 import { AuthButton } from "@/components/AuthButton";
+import { PasswordField } from "@/components/PasswordField";
+import { PasswordRules } from "@/components/PasswordRules";
 
-function VerifyOtpForm() {
+function ResetPasswordForm() {
   const router = useRouter();
-  const { refresh } = useAuth();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
-  const [info, setInfo] = useState("");
-  const [resending, setResending] = useState(false);
   const [state, setState] = useState("idle"); // 'idle' | 'loading' | 'success'
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    setInfo("");
+    if (newPassword !== confirmPassword) {
+      setError({ message: "Passwords don't match." });
+      return;
+    }
     setState("loading");
     try {
-      const tokens = await apiPost("/auth/verify-otp", { email, code });
-      saveTokens(tokens);
-      await refresh();
+      await apiPost("/auth/reset-password", {
+        email,
+        code,
+        new_password: newPassword,
+      });
       setState("success");
-      setTimeout(() => router.push("/"), 1000);
+      setTimeout(() => router.push("/login"), 1200);
     } catch (err) {
       setState("idle");
       if (err.code === "invalid_otp") {
         setError({
-          message: "That code is invalid or expired. Try again or resend it.",
+          message: "That code is invalid or expired. Request a new one.",
+          action: {
+            href: `/forgot-password?email=${encodeURIComponent(email)}`,
+            label: "Resend code.",
+          },
         });
       } else if (err.code === "validation_error") {
-        setError({ message: "The code format is invalid — it should be 4–12 digits." });
+        const first = err.fieldErrors?.[0];
+        setError({
+          message: first?.msg || "Please check the form and try again.",
+        });
       } else {
         setError({ message: err.message });
       }
     }
   };
 
-  const handleResend = async () => {
-    setError(null);
-    setInfo("");
-    setResending(true);
-    try {
-      await apiPost("/auth/resend-otp", { email });
-      setInfo("A new code has been sent if your account exists.");
-    } catch (err) {
-      setError({ message: err.message });
-    } finally {
-      setResending(false);
-    }
-  };
-
   return (
     <>
-      <h1 className="mb-2 text-2xl font-bold text-black">Verify your email</h1>
+      <h1 className="mb-2 text-2xl font-bold text-black">Reset password</h1>
       <p className="mb-6 text-sm text-gray-600">
         Enter the code we sent to{" "}
-        <span className="font-medium text-black">{email || "your email"}</span>.
+        <span className="font-medium text-black">{email || "your email"}</span>{" "}
+        and pick a new password.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,6 +85,46 @@ function VerifyOtpForm() {
           />
         </div>
 
+        <div className="group">
+          <PasswordField
+            id="new_password"
+            label="New password"
+            required
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+          <div className="hidden group-focus-within:block">
+            <PasswordRules password={newPassword} />
+          </div>
+        </div>
+
+        <div>
+          <PasswordField
+            id="confirm_password"
+            label="Confirm new password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+          />
+          {confirmPassword && (
+            <p
+              className={`mt-2 flex items-center gap-2 text-xs ${
+                newPassword === confirmPassword
+                  ? "text-green-700"
+                  : "text-red-600"
+              }`}
+            >
+              <span>
+                {newPassword === confirmPassword
+                  ? "✓ Passwords match"
+                  : "✗ Passwords don't match"}
+              </span>
+            </p>
+          )}
+        </div>
+
         {error && (
           <div
             role="alert"
@@ -106,48 +144,28 @@ function VerifyOtpForm() {
             )}
           </div>
         )}
-        {info && (
-          <div
-            role="status"
-            className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700"
-          >
-            {info}
-          </div>
-        )}
 
         <AuthButton
           state={state}
-          idleLabel="Verify"
-          loadingLabel="Verifying…"
-          successLabel="Verified!"
+          idleLabel="Reset password"
+          loadingLabel="Resetting…"
+          successLabel="Password reset!"
         />
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-600">
-        Didn&apos;t get the code?{" "}
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={resending || !email}
-          className="font-semibold text-black hover:underline disabled:opacity-60"
-        >
-          {resending ? "Resending…" : "Resend"}
-        </button>
-      </p>
-      <p className="mt-2 text-center text-sm text-gray-600">
         <Link href="/login" className="font-semibold text-black hover:underline">
           Back to log in
         </Link>
       </p>
-
     </>
   );
 }
 
-export default function VerifyOtpPage() {
+export default function ResetPasswordPage() {
   return (
     <Suspense fallback={null}>
-      <VerifyOtpForm />
+      <ResetPasswordForm />
     </Suspense>
   );
 }
